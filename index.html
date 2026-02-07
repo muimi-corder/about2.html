@@ -2,107 +2,403 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MoneyNote Clone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MoneyNote Clone - Monotone Black</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        .numpad button { @apply bg-white py-4 text-xl font-semibold border border-gray-100 active:bg-gray-200 transition-colors; }
-        .category-btn { @apply flex flex-col items-center justify-center p-2 rounded-xl border border-transparent active:bg-blue-50; }
-        .category-icon { @apply w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-1; }
+        :root {
+            --bg-dark: #121212;
+            --surface-dark: #1e1e1e;
+            --border-dark: #333333;
+            --text-main: #ffffff;
+            --text-sub: #a0a0a0;
+            --accent-blue: #4a90e2;
+            --accent-red: #ff5a5a;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* スクロールエリア */
+        .content-area {
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        /* カリキュレーターボタン */
+        .calc-btn {
+            background-color: #2c2c2c;
+            border: 1px solid #1a1a1a;
+            transition: background 0.1s;
+        }
+        .calc-btn:active { background-color: #444; }
+        .calc-btn-op { background-color: #383838; }
+        .calc-btn-ok { background-color: #2c4a63; color: #4a90e2; }
+
+        /* タブアニメーション */
+        .tab-active { border-bottom: 2px solid white; color: white; }
+        .tab-inactive { color: #666; }
+
+        /* カテゴリアイコン */
+        .cat-item {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .cat-item.active { border: 2px solid #fff; }
+
+        /* 下部ナビゲーション */
+        .nav-item { color: #888; font-size: 0.75rem; }
+        .nav-item.active { color: #fff; }
+
+        /* グラフ用（簡易） */
+        .donut-chart {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: conic-gradient(#ff9800 0% 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .donut-inner {
+            width: 80px;
+            height: 80px;
+            background-color: var(--bg-dark);
+            border-radius: 50%;
+        }
     </style>
 </head>
-<body class="bg-gray-50 flex flex-col h-screen max-w-md mx-auto border-x shadow-lg">
+<body>
 
-    <header class="bg-white p-4 border-b flex justify-between items-center">
-        <button class="text-gray-400 text-xl">＜</button>
-        <div class="text-center font-bold">2026年 2月</div>
-        <button class="text-gray-400 text-xl">＞</button>
+<div id="setup-screen" class="hidden fixed inset-0 z-50 bg-[#121212] flex flex-col p-6">
+    <h1 class="text-xl font-bold mb-8">初回設定</h1>
+    <div class="space-y-1 bg-[#1e1e1e] rounded-lg">
+        <div class="flex justify-between p-4 border-b border-[#333]">
+            <span>月度の開始日</span>
+            <span class="text-gray-400">1日</span>
+        </div>
+        <div class="flex justify-between p-4">
+            <span>テーマカラー</span>
+            <span class="text-gray-400">モノトーンブラック</span>
+        </div>
+    </div>
+    <p class="text-xs text-gray-500 mt-2">※あとで変更できます。</p>
+    <button onclick="closeSetup()" class="mt-auto bg-[#444] text-white py-4 rounded-full font-bold">さあ、はじめよう！</button>
+</div>
+
+<div id="main-app" class="flex flex-col h-full">
+    
+    <header id="app-header" class="p-4 flex justify-between items-center border-b border-[#333]">
+        <h1 id="header-title" class="font-bold">シンプル家計簿</h1>
+        <i class="bi bi-pencil"></i>
     </header>
 
-    <div class="bg-white p-4 flex justify-around text-sm border-b">
-        <div class="text-center"><p class="text-gray-500">支出</p><p class="text-red-500 font-bold" id="total-out">¥0</p></div>
-        <div class="text-center"><p class="text-gray-500">収入</p><p class="text-blue-500 font-bold">¥0</p></div>
-        <div class="text-center"><p class="text-gray-500">残高</p><p class="font-bold text-gray-800">¥0</p></div>
+    <div id="view-input" class="content-area p-4 space-y-4">
+        <div class="flex border-b border-[#333] mb-4">
+            <button onclick="toggleType('out')" id="tab-out" class="flex-1 py-2 font-bold tab-active">支出</button>
+            <button onclick="toggleType('in')" id="tab-in" class="flex-1 py-2 font-bold tab-inactive">収入</button>
+        </div>
+
+        <div class="space-y-3">
+            <div class="flex items-center justify-between bg-[#1e1e1e] p-3 rounded-lg">
+                <span class="text-sm">日付</span>
+                <div class="flex items-center space-x-4">
+                    <i class="bi bi-chevron-left"></i>
+                    <span id="date-display">2026年2月8日 (日)</span>
+                    <i class="bi bi-calendar3"></i>
+                    <i class="bi bi-chevron-right"></i>
+                </div>
+            </div>
+            <div class="flex items-center justify-between bg-[#1e1e1e] p-3 rounded-lg">
+                <span class="text-sm">メモ</span>
+                <input type="text" id="memo" placeholder="メモを追加" class="bg-transparent text-right outline-none w-2/3">
+            </div>
+            <div class="flex items-center justify-between bg-[#1e1e1e] p-3 rounded-lg border-2 border-transparent focus-within:border-gray-500">
+                <span id="type-label" class="text-sm">支出</span>
+                <div class="flex items-center">
+                    <span id="amount-display" class="text-2xl font-bold mr-2">0</span>
+                    <span class="text-sm">円</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-4 mb-2">カテゴリー</p>
+        <div id="category-grid" class="grid grid-cols-4 gap-2">
+            </div>
+
+        <button onclick="showCalc()" class="w-full bg-[#444] py-4 rounded-full mt-6 font-bold" id="submit-btn">支出を入力する</button>
     </div>
 
-    <div id="list" class="flex-1 overflow-y-auto p-2 space-y-2">
+    <div id="view-calendar" class="content-area hidden">
+        <div class="p-4 border-b border-[#333] flex justify-between items-center">
+            <i class="bi bi-chevron-left text-gray-500"></i>
+            <span class="font-bold">2026年2月</span>
+            <i class="bi bi-calendar-event text-gray-500"></i>
+            <i class="bi bi-chevron-right text-gray-500"></i>
         </div>
-
-    <div class="bg-white border-t p-4 shadow-2xl">
-        <div class="flex justify-between items-end mb-4">
-            <span id="selected-cat" class="text-gray-500 font-medium">カテゴリを選択</span>
-            <span id="display" class="text-3xl font-bold text-gray-800">¥ 0</span>
+        <div class="grid grid-cols-7 text-center text-xs p-2 text-gray-500 border-b border-[#333]">
+            <div class="text-red-500">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="text-blue-500">土</div>
         </div>
-
-        <div class="grid grid-cols-4 gap-2 mb-4">
-            <button onclick="setCat('食費', '🍔', 'bg-orange-100')" class="category-btn">
-                <div class="category-icon bg-orange-100">🍔</div><span class="text-xs">食費</span>
-            </button>
-            <button onclick="setCat('日用品', '🏠', 'bg-blue-100')" class="category-btn">
-                <div class="category-icon bg-blue-100">🏠</div><span class="text-xs">日用品</span>
-            </button>
-            <button onclick="setCat('交際費', '☕', 'bg-pink-100')" class="category-btn">
-                <div class="category-icon bg-pink-100">☕</div><span class="text-xs">交際費</span>
-            </button>
-            <button onclick="setCat('交通費', '🚃', 'bg-green-100')" class="category-btn">
-                <div class="category-icon bg-green-100">🚃</div><span class="text-xs">交通費</span>
-            </button>
+        <div id="calendar-grid" class="grid grid-cols-7 text-center min-h-[250px] p-2">
+            </div>
+        <div class="bg-[#1e1e1e] flex justify-around p-3 text-sm border-y border-[#333]">
+            <div class="text-center"><p class="text-gray-500 text-[10px]">収入</p><p class="text-blue-400 font-bold" id="sum-in">0円</p></div>
+            <div class="text-center border-x border-[#333] px-8"><p class="text-gray-500 text-[10px]">支出</p><p class="text-red-400 font-bold" id="sum-out">0円</p></div>
+            <div class="text-center"><p class="text-gray-500 text-[10px]">合計</p><p class="font-bold" id="sum-total">0円</p></div>
         </div>
+        <div id="daily-list" class="p-2 space-y-1">
+            </div>
+    </div>
 
-        <div class="grid grid-cols-4 gap-1 numpad">
-            <button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button>
-            <button onclick="clearDisp()" class="text-red-500">C</button>
-            <button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button>
-            <button class="bg-gray-50 text-gray-400">÷</button>
-            <button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button>
-            <button class="bg-gray-50 text-gray-400">×</button>
-            <button onclick="press(0)">0</button><button onclick="press('00')">00</button><button onclick="save()" class="col-span-2 bg-blue-500 !text-white !border-none">入力</button>
+    <div id="view-report" class="content-area hidden p-4 flex flex-col items-center">
+        <div class="w-full flex justify-between items-center mb-6">
+            <i class="bi bi-chevron-left"></i>
+            <span class="font-bold">2026年2月</span>
+            <i class="bi bi-calendar3"></i>
+            <i class="bi bi-chevron-right"></i>
+        </div>
+        <div class="donut-chart mb-6">
+            <div class="donut-inner flex flex-col items-center justify-center">
+                <span class="text-[10px] text-gray-500">支出</span>
+                <span class="text-sm font-bold" id="report-total">¥0</span>
+            </div>
+        </div>
+        <div class="w-full space-y-4" id="report-list">
+            </div>
+    </div>
+
+    <div id="view-more" class="content-area hidden p-4">
+        <div class="space-y-4">
+            <div class="bg-[#1e1e1e] rounded-lg overflow-hidden">
+                <div class="p-4 border-b border-[#333] flex items-center"><i class="bi bi-gear mr-3"></i>全般設定</div>
+                <div class="p-4 border-b border-[#333] flex items-center text-yellow-500"><i class="bi bi-stars mr-3"></i>プレミアムサービス</div>
+                <div class="p-4 flex justify-between items-center"><span class="flex items-center"><i class="bi bi-palette mr-3"></i>テーマカラー</span><span class="text-gray-500">モノトーンブラック</span></div>
+            </div>
+            <div class="bg-[#1e1e1e] rounded-lg overflow-hidden">
+                <div class="p-4 border-b border-[#333] flex items-center"><i class="bi bi-bar-chart mr-3"></i>年間収支レポート</div>
+                <div class="p-4 border-b border-[#333] flex items-center"><i class="bi bi-pie-chart mr-3"></i>年間カテゴリレポート</div>
+            </div>
         </div>
     </div>
 
-    <script>
-        let currentAmount = "";
-        let currentCat = { name: "", icon: "", color: "" };
-        let total = 0;
+    <div id="calc-overlay" class="fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-[#333] transform translate-y-full transition-transform duration-300 z-40 max-w-md mx-auto">
+        <div class="flex justify-between items-center p-2 px-4 border-b border-[#333]">
+            <i class="bi bi-calculator"></i>
+            <div class="flex space-x-2">
+                <button class="text-[10px] border border-gray-600 px-2 py-1 rounded">税込8%</button>
+                <button class="text-[10px] border border-gray-600 px-2 py-1 rounded">税込10%</button>
+                <button onclick="hideCalc()" class="text-sm font-bold ml-4">完了</button>
+            </div>
+        </div>
+        <div class="grid grid-cols-4 h-80">
+            <button onclick="press(7)" class="calc-btn">7</button><button onclick="press(8)" class="calc-btn">8</button><button onclick="press(9)" class="calc-btn">9</button><button onclick="press('/')" class="calc-btn calc-btn-op">÷</button>
+            <button onclick="press(4)" class="calc-btn">4</button><button onclick="press(5)" class="calc-btn">5</button><button onclick="press(6)" class="calc-btn">6</button><button onclick="press('*')" class="calc-btn calc-btn-op">×</button>
+            <button onclick="press(1)" class="calc-btn">1</button><button onclick="press(2)" class="calc-btn">2</button><button onclick="press(3)" class="calc-btn">3</button><button onclick="press('-')" class="calc-btn calc-btn-op">-</button>
+            <button onclick="press(0)" class="calc-btn">0</button><button onclick="press('00')" class="calc-btn">00</button><button onclick="press('+')" class="calc-btn calc-btn-op">+</button><button onclick="backspace()" class="calc-btn text-red-400">Del</button>
+            <button onclick="clearCalc()" class="calc-btn text-gray-400 col-span-1">AC</button>
+            <button onclick="saveEntry()" class="calc-btn calc-btn-ok col-span-3 text-xl font-bold">OK</button>
+        </div>
+    </div>
 
-        function press(num) {
-            currentAmount += num;
-            updateDisplay();
+    <nav class="h-16 border-t border-[#333] flex bg-[#121212]">
+        <button onclick="showView('input')" class="nav-item active flex-1 flex flex-col items-center justify-center">
+            <i class="bi bi-pencil-fill text-xl"></i><span>入力</span>
+        </button>
+        <button onclick="showView('calendar')" class="nav-item flex-1 flex flex-col items-center justify-center">
+            <i class="bi bi-calendar3 text-xl"></i><span>カレンダー</span>
+        </button>
+        <button onclick="showView('report')" class="nav-item flex-1 flex flex-col items-center justify-center">
+            <i class="bi bi-pie-chart-fill text-xl"></i><span>レポート</span>
+        </button>
+        <button onclick="showView('more')" class="nav-item flex-1 flex flex-col items-center justify-center">
+            <i class="bi bi-three-dots text-xl"></i><span>その他</span>
+        </button>
+    </nav>
+</div>
+
+<script>
+    // --- データ管理 ---
+    let entries = JSON.parse(localStorage.getItem('moneynote_entries') || '[]');
+    let currentType = 'out';
+    let currentAmount = "0";
+    let selectedCategory = "";
+
+    const categories = {
+        out: [
+            { id: 'food', name: '食費', icon: 'bi-utensils', color: '#ff9800' },
+            { id: 'daily', name: '日用品', icon: 'bi-bag-heart', color: '#4caf50' },
+            { id: 'cloth', name: '衣服', icon: 'bi-tags', color: '#2196f3' },
+            { id: 'beauty', name: '美容', icon: 'bi-scissors', color: '#e91e63' },
+            { id: 'fun', name: '交際費', icon: 'bi-cup-hot', color: '#ffc107' },
+            { id: 'medical', name: '医療費', icon: 'bi-capsule', color: '#f44336' },
+            { id: 'edu', name: '教育費', icon: 'bi-pencil-square', color: '#9c27b0' },
+            { id: 'util', name: '光熱費', icon: 'bi-droplet', color: '#00bcd4' }
+        ],
+        in: [
+            { id: 'salary', name: '給料', icon: 'bi-wallet2', color: '#4caf50' },
+            { id: 'bonus', name: '賞与', icon: 'bi-gift', color: '#ff5722' },
+            { id: 'extra', name: '副業', icon: 'bi-cash-coin', color: '#009688' },
+            { id: 'inv', name: '投資', icon: 'bi-graph-up-arrow', color: '#3f51b5' }
+        ]
+    };
+
+    // --- 初期化 ---
+    window.onload = () => {
+        if (!localStorage.getItem('setup_done')) {
+            document.getElementById('setup-screen').classList.remove('hidden');
+        }
+        renderCategories();
+        updateReport();
+    };
+
+    function closeSetup() {
+        localStorage.setItem('setup_done', 'true');
+        document.getElementById('setup-screen').classList.add('hidden');
+    }
+
+    // --- 画面切り替え ---
+    function showView(viewName) {
+        document.querySelectorAll('.content-area').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('view-' + viewName).classList.remove('hidden');
+        event.currentTarget.classList.add('active');
+
+        const titles = { input: 'シンプル家計簿', calendar: 'カレンダー', report: 'レポート', more: 'その他' };
+        document.getElementById('header-title').innerText = titles[viewName];
+
+        if (viewName === 'calendar') renderCalendar();
+        if (viewName === 'report') updateReport();
+    }
+
+    function toggleType(type) {
+        currentType = type;
+        document.getElementById('tab-out').className = type === 'out' ? 'flex-1 py-2 font-bold tab-active' : 'flex-1 py-2 font-bold tab-inactive';
+        document.getElementById('tab-in').className = type === 'in' ? 'flex-1 py-2 font-bold tab-active' : 'flex-1 py-2 font-bold tab-inactive';
+        document.getElementById('type-label').innerText = type === 'out' ? '支出' : '収入';
+        document.getElementById('submit-btn').innerText = type === 'out' ? '支出を入力する' : '収入を入力する';
+        renderCategories();
+    }
+
+    // --- 入力ロジック ---
+    function renderCategories() {
+        const grid = document.getElementById('category-grid');
+        grid.innerHTML = '';
+        categories[currentType].forEach(cat => {
+            const div = document.createElement('div');
+            div.className = `cat-item p-3 flex flex-col items-center justify-center space-y-1 ${selectedCategory === cat.id ? 'active' : ''}`;
+            div.onclick = () => {
+                selectedCategory = cat.id;
+                renderCategories();
+            };
+            div.innerHTML = `<i class="bi ${cat.icon} text-2xl" style="color:${cat.color}"></i><span class="text-[10px]">${cat.name}</span>`;
+            grid.appendChild(div);
+        });
+    }
+
+    function showCalc() {
+        document.getElementById('calc-overlay').classList.remove('translate-y-full');
+    }
+
+    function hideCalc() {
+        document.getElementById('calc-overlay').classList.add('translate-y-full');
+    }
+
+    function press(val) {
+        if (currentAmount === "0") currentAmount = "";
+        currentAmount += val.toString();
+        document.getElementById('amount-display').innerText = currentAmount;
+    }
+
+    function clearCalc() {
+        currentAmount = "0";
+        document.getElementById('amount-display').innerText = currentAmount;
+    }
+
+    function backspace() {
+        currentAmount = currentAmount.slice(0, -1) || "0";
+        document.getElementById('amount-display').innerText = currentAmount;
+    }
+
+    function saveEntry() {
+        if (selectedCategory === "") return alert("カテゴリーを選択してください");
+        const entry = {
+            id: Date.now(),
+            type: currentType,
+            category: selectedCategory,
+            amount: parseInt(currentAmount),
+            memo: document.getElementById('memo').value,
+            date: new Date().toLocaleDateString()
+        };
+        entries.push(entry);
+        localStorage.setItem('moneynote_entries', JSON.stringify(entries));
+        
+        // リセット
+        clearCalc();
+        document.getElementById('memo').value = "";
+        hideCalc();
+        alert("保存しました！");
+    }
+
+    // --- カレンダー & レポート ---
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        grid.innerHTML = '';
+        let sIn = 0, sOut = 0;
+
+        for (let i = 1; i <= 28; i++) { // 2月簡易版
+            const day = document.createElement('div');
+            day.className = "py-4 border-t border-r border-[#1a1a1a] relative";
+            day.innerHTML = `<span class="text-xs text-gray-400">${i}</span>`;
+            grid.appendChild(day);
         }
 
-        function clearDisp() {
-            currentAmount = "";
-            updateDisplay();
+        // 簡易計算
+        entries.forEach(e => {
+            if (e.type === 'in') sIn += e.amount;
+            else sOut += e.amount;
+        });
+        document.getElementById('sum-in').innerText = sIn.toLocaleString() + '円';
+        document.getElementById('sum-out').innerText = sOut.toLocaleString() + '円';
+        document.getElementById('sum-total').innerText = (sIn - sOut).toLocaleString() + '円';
+    }
+
+    function updateReport() {
+        const reportList = document.getElementById('report-list');
+        reportList.innerHTML = '';
+        let totalOut = 0;
+        const catTotals = {};
+
+        entries.filter(e => e.type === 'out').forEach(e => {
+            totalOut += e.amount;
+            catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+        });
+
+        document.getElementById('report-total').innerText = '¥' + totalOut.toLocaleString();
+
+        for (const [catId, amount] of Object.entries(catTotals)) {
+            const cat = categories.out.find(c => c.id === catId);
+            const percent = ((amount / totalOut) * 100).toFixed(1);
+            const div = document.createElement('div');
+            div.className = "flex justify-between items-center";
+            div.innerHTML = `
+                <div class="flex items-center">
+                    <i class="bi ${cat.icon} mr-3" style="color:${cat.color}"></i>
+                    <span>${cat.name}</span>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold">${amount.toLocaleString()}円</p>
+                    <p class="text-[10px] text-gray-500">${percent}%</p>
+                </div>`;
+            reportList.appendChild(div);
         }
-
-        function updateDisplay() {
-            document.getElementById('display').innerText = "¥ " + (Number(currentAmount).toLocaleString() || "0");
-        }
-
-        function setCat(name, icon, color) {
-            currentCat = { name, icon, color };
-            document.getElementById('selected-cat').innerText = icon + " " + name;
-        }
-
-        function save() {
-            if (!currentAmount || !currentCat.name) return alert("カテゴリと金額を入力してください");
-            
-            const list = document.getElementById('list');
-            const item = document.createElement('div');
-            item.className = "flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border-l-4 " + currentCat.color.replace('bg-', 'border-');
-            item.innerHTML = `<div class="flex items-center">
-                                <span class="text-xl mr-3">${currentCat.icon}</span>
-                                <span class="font-medium">${currentCat.name}</span>
-                              </div>
-                              <span class="font-bold">-¥${Number(currentAmount).toLocaleString()}</span>`;
-            list.prepend(item);
-
-            total += Number(currentAmount);
-            document.getElementById('total-out').innerText = "¥" + total.toLocaleString();
-
-            currentAmount = "";
-            updateDisplay();
-        }
-    </script>
+    }
+</script>
 </body>
 </html>
