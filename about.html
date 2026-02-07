@@ -1,26 +1,46 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Void Pulse - About</title>
-<style>
-  body {
-    margin: 0;
-    padding: 20px;
-    background-color: #000;
-    color: #fff;
-    font-family: system-ui, -apple-system, sans-serif;
-  }
-  h1 { color: #00f5af; margin-bottom: 10px; }
-  p { margin-bottom: 10px; font-size: 16px; }
-  a { color: #00f5af; text-decoration: underline; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプル家計簿</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h1>About</h1>
-  <p>Void Pulseは、あなたのクリックで数字を増やし、ゴーストTop10を抜き、最終的には虚無の中で「GOTOWORK」と告げられる、完全に無意味な体験を提供します。</p>
-  <p>このゲームは娯楽目的のみで作成されており、報酬や得点は存在しません。あなたの時間は、あなた自身のものです。</p>
-  <p>リンクテスト: <a href="privacy.html">Privacy</a></p>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <h1 class="text-xl font-bold mb-4">シンプル家計簿</h1>
+        
+        <div class="space-y-4 mb-6">
+            <input id="amount" type="number" placeholder="金額を入力" class="w-full p-3 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-400" inputmode="numeric">
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="addRecord('食費')" class="bg-orange-100 p-2 rounded text-sm">食費</button>
+                <button onclick="addRecord('日用品')" class="bg-blue-100 p-2 rounded text-sm">日用品</button>
+                <button onclick="addRecord('趣味')" class="bg-green-100 p-2 rounded text-sm">趣味</button>
+            </div>
+        </div>
+
+        <hr class="mb-4">
+
+        <h2 class="font-bold mb-2">今日の記録</h2>
+        <ul id="history" class="space-y-2 max-h-60 overflow-y-auto">
+            </ul>
+    </div>
+
+    <script>
+        let total = 0;
+        function addRecord(category) {
+            const amountInput = document.getElementById('amount');
+            const amount = amountInput.value;
+            if (!amount) return;
+
+            const history = document.getElementById('history');
+            const li = document.createElement('li');
+            li.className = "flex justify-between bg-gray-50 p-2 rounded text-sm";
+            li.innerHTML = `<span>${category}</span><span class="font-mono">¥${Number(amount).toLocaleString()}</span>`;
+            
+            history.prepend(li); // 新しいものを上に
+            amountInput.value = ''; // 入力欄を空にする
+        }
+    </script>
 </body>
 </html>
