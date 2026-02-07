@@ -3,45 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>シンプル家計簿</title>
+    <title>MoneyNote Clone</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .numpad button { @apply bg-white py-4 text-xl font-semibold border border-gray-100 active:bg-gray-200 transition-colors; }
+        .category-btn { @apply flex flex-col items-center justify-center p-2 rounded-xl border border-transparent active:bg-blue-50; }
+        .category-icon { @apply w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-1; }
+    </style>
 </head>
-<body class="bg-gray-100 p-4">
-    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-        <h1 class="text-xl font-bold mb-4">シンプル家計簿</h1>
-        
-        <div class="space-y-4 mb-6">
-            <input id="amount" type="number" placeholder="金額を入力" class="w-full p-3 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-400" inputmode="numeric">
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="addRecord('食費')" class="bg-orange-100 p-2 rounded text-sm">食費</button>
-                <button onclick="addRecord('日用品')" class="bg-blue-100 p-2 rounded text-sm">日用品</button>
-                <button onclick="addRecord('趣味')" class="bg-green-100 p-2 rounded text-sm">趣味</button>
-            </div>
+<body class="bg-gray-50 flex flex-col h-screen max-w-md mx-auto border-x shadow-lg">
+
+    <header class="bg-white p-4 border-b flex justify-between items-center">
+        <button class="text-gray-400 text-xl">＜</button>
+        <div class="text-center font-bold">2026年 2月</div>
+        <button class="text-gray-400 text-xl">＞</button>
+    </header>
+
+    <div class="bg-white p-4 flex justify-around text-sm border-b">
+        <div class="text-center"><p class="text-gray-500">支出</p><p class="text-red-500 font-bold" id="total-out">¥0</p></div>
+        <div class="text-center"><p class="text-gray-500">収入</p><p class="text-blue-500 font-bold">¥0</p></div>
+        <div class="text-center"><p class="text-gray-500">残高</p><p class="font-bold text-gray-800">¥0</p></div>
+    </div>
+
+    <div id="list" class="flex-1 overflow-y-auto p-2 space-y-2">
         </div>
 
-        <hr class="mb-4">
+    <div class="bg-white border-t p-4 shadow-2xl">
+        <div class="flex justify-between items-end mb-4">
+            <span id="selected-cat" class="text-gray-500 font-medium">カテゴリを選択</span>
+            <span id="display" class="text-3xl font-bold text-gray-800">¥ 0</span>
+        </div>
 
-        <h2 class="font-bold mb-2">今日の記録</h2>
-        <ul id="history" class="space-y-2 max-h-60 overflow-y-auto">
-            </ul>
+        <div class="grid grid-cols-4 gap-2 mb-4">
+            <button onclick="setCat('食費', '🍔', 'bg-orange-100')" class="category-btn">
+                <div class="category-icon bg-orange-100">🍔</div><span class="text-xs">食費</span>
+            </button>
+            <button onclick="setCat('日用品', '🏠', 'bg-blue-100')" class="category-btn">
+                <div class="category-icon bg-blue-100">🏠</div><span class="text-xs">日用品</span>
+            </button>
+            <button onclick="setCat('交際費', '☕', 'bg-pink-100')" class="category-btn">
+                <div class="category-icon bg-pink-100">☕</div><span class="text-xs">交際費</span>
+            </button>
+            <button onclick="setCat('交通費', '🚃', 'bg-green-100')" class="category-btn">
+                <div class="category-icon bg-green-100">🚃</div><span class="text-xs">交通費</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-4 gap-1 numpad">
+            <button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button>
+            <button onclick="clearDisp()" class="text-red-500">C</button>
+            <button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button>
+            <button class="bg-gray-50 text-gray-400">÷</button>
+            <button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button>
+            <button class="bg-gray-50 text-gray-400">×</button>
+            <button onclick="press(0)">0</button><button onclick="press('00')">00</button><button onclick="save()" class="col-span-2 bg-blue-500 !text-white !border-none">入力</button>
+        </div>
     </div>
 
     <script>
+        let currentAmount = "";
+        let currentCat = { name: "", icon: "", color: "" };
         let total = 0;
-        function addRecord(category) {
-            const amountInput = document.getElementById('amount');
-            const amount = amountInput.value;
-            if (!amount) return;
 
-            const history = document.getElementById('history');
-            const li = document.createElement('li');
-            li.className = "flex justify-between bg-gray-50 p-2 rounded text-sm";
-            li.innerHTML = `<span>${category}</span><span class="font-mono">¥${Number(amount).toLocaleString()}</span>`;
+        function press(num) {
+            currentAmount += num;
+            updateDisplay();
+        }
+
+        function clearDisp() {
+            currentAmount = "";
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('display').innerText = "¥ " + (Number(currentAmount).toLocaleString() || "0");
+        }
+
+        function setCat(name, icon, color) {
+            currentCat = { name, icon, color };
+            document.getElementById('selected-cat').innerText = icon + " " + name;
+        }
+
+        function save() {
+            if (!currentAmount || !currentCat.name) return alert("カテゴリと金額を入力してください");
             
-            history.prepend(li); // 新しいものを上に
-            amountInput.value = ''; // 入力欄を空にする
+            const list = document.getElementById('list');
+            const item = document.createElement('div');
+            item.className = "flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border-l-4 " + currentCat.color.replace('bg-', 'border-');
+            item.innerHTML = `<div class="flex items-center">
+                                <span class="text-xl mr-3">${currentCat.icon}</span>
+                                <span class="font-medium">${currentCat.name}</span>
+                              </div>
+                              <span class="font-bold">-¥${Number(currentAmount).toLocaleString()}</span>`;
+            list.prepend(item);
+
+            total += Number(currentAmount);
+            document.getElementById('total-out').innerText = "¥" + total.toLocaleString();
+
+            currentAmount = "";
+            updateDisplay();
         }
     </script>
 </body>
 </html>
-
